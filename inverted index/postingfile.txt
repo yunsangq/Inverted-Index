@@ -1,0 +1,22 @@
+ambitious	->	2
+be	->	2
+brutus	->	1 2 
+caesar	->	1 2 
+capitol	->	1
+did	->	1
+enact	->	1
+hath	->	2
+i	->	1
+it	->	2
+i¡¯	->	1
+julius	->	1
+killed	->	1
+let	->	2
+me	->	1
+noble	->	2
+so	->	2
+the	->	1 2 
+told	->	2
+was	->	1 2 
+with	->	2
+you	->	2

@@ -20,8 +20,18 @@ typedef struct Node
 	int docID;	
 }NodeData;
 
+typedef struct Posting
+{
+	CString term;
+	int cnt = 0;
+	int list[10000];
+}PostingData;
+
 list<NodeData> m_list;
 list<NodeData>::iterator i_list;
+
+list<PostingData> p_list;
+list<PostingData>::iterator pi_list;
 
 bool compare(NodeData& first, NodeData& second)
 {
@@ -85,6 +95,7 @@ BEGIN_MESSAGE_MAP(CinvertedindexDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON2, &CinvertedindexDlg::OnBnClickedButton2)
 	ON_BN_CLICKED(IDC_BUTTON3, &CinvertedindexDlg::OnBnClickedButton3)
 	ON_BN_CLICKED(IDC_BUTTON4, &CinvertedindexDlg::OnBnClickedButton4)
+	ON_BN_CLICKED(IDC_BUTTON5, &CinvertedindexDlg::OnBnClickedButton5)
 END_MESSAGE_MAP()
 
 
@@ -271,6 +282,97 @@ void CinvertedindexDlg::OnBnClickedButton1()
 			sort.WriteString(term + "\t" + index + "\r\n");
 		}
 		sort.Close();
+		
+		PostingData begin;
+		begin.term = _T("0");
+		begin.list[0] = 0;
+		begin.cnt = 0;
+		p_list.push_back(begin);
+		pi_list = p_list.begin();
+		int m_listcnt = 0;
+		for (i_list = m_list.begin(); i_list != m_list.end(); i_list++)
+		{			
+			if (m_listcnt == m_list.size() - 1)
+			{
+				PostingData obj;
+				obj.term = i_list->term;
+				obj.list[obj.cnt] = i_list->docID;
+				obj.cnt = obj.cnt++;
+
+				p_list.push_back(obj);
+				pi_list++;
+				break;
+			}
+			//마지막 이터레이터 초과되지 않게 처리만 하면 됨
+			if (i_list->term != i_list++->term)
+			{				
+				i_list--;
+				PostingData obj;
+				obj.term = i_list->term;
+				obj.list[obj.cnt] = i_list->docID;
+				obj.cnt = obj.cnt++;
+
+				p_list.push_back(obj);
+				pi_list++;
+			}
+			else
+			{				
+				CString nowterm;								
+				i_list--;
+				PostingData obj;
+				obj.term = i_list->term;
+				obj.list[obj.cnt] = i_list->docID;
+				obj.cnt = obj.cnt++;
+
+				p_list.push_back(obj);
+				pi_list++;
+				i_list++;				
+				nowterm = i_list->term;				
+				while (i_list->term == nowterm)
+				{
+					if (i_list->docID != pi_list->list[pi_list->cnt - 1])
+					{
+						pi_list->list[pi_list->cnt] = i_list->docID;
+						pi_list->cnt = pi_list->cnt++;
+						i_list++;
+						m_listcnt++;
+					}
+					else
+					{
+						i_list++;
+						m_listcnt++;
+					}
+				}
+				i_list--;
+			}
+			m_listcnt++;
+		}
+
+		CStdioFile Postingfile;
+		Postingfile.Open(_T("postingfile.txt"), CFile::modeCreate | CFile::modeWrite | CFile::typeText);
+		for (pi_list = p_list.begin(); pi_list != p_list.end(); pi_list++)
+		{
+			if (pi_list == p_list.begin())
+				pi_list++;
+			CString term, index;
+			term = pi_list->term;
+			if (pi_list->cnt > 1)
+			{
+				Postingfile.WriteString(term + "\t->\t");
+				for (int i = 0; i < pi_list->cnt; i++)
+				{
+					index.Format(_T("%d"), pi_list->list[i]);
+					Postingfile.WriteString(index + " ");
+				}
+				Postingfile.WriteString(_T("\r\n"));
+			}
+			else
+			{
+				index.Format(_T("%d"), pi_list->list[0]);
+				Postingfile.WriteString(term + "\t->\t" + index + "\r\n");
+			}
+		}
+		Postingfile.Close();
 	}
 
 }
@@ -330,6 +432,31 @@ void CinvertedindexDlg::OnBnClickedButton4()
 	CString str, display_str;
 
 	if (!File.Open(_T("sort.txt"), CFile::modeRead))
+	{
+		MessageBox(_T("파일을 열지 못했습니다."));
+	}
+	else
+	{
+		while (File.ReadString(str))
+		{
+			display_str += str;
+			display_str += _T("\r\n");
+		}
+
+		SetDlgItemText(IDC_EDIT1, display_str);
+		File.Close();
+	}
+}
+
+void CinvertedindexDlg::OnBnClickedButton5()
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	SetDlgItemText(IDC_EDIT1, _T(""));
+
+	CStdioFile File;
+	CString str, display_str;
+
+	if (!File.Open(_T("postingfile.txt"), CFile::modeRead))
 	{
 		MessageBox(_T("파일을 열지 못했습니다."));
 	}
