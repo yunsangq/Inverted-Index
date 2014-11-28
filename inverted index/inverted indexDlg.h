@@ -35,6 +35,9 @@ public:
 	afx_msg void OnBnClickedButton3();
 	afx_msg void OnBnClickedButton4();
 	afx_msg void OnBnClickedButton5();
+//	CString m_edit2;
+	afx_msg void OnBnClickedButton6();
+	virtual BOOL PreTranslateMessage(MSG* pMsg);
 };
 
 extern CString all_txt;
