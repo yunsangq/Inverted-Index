@@ -74,7 +74,48 @@ void intersecting(PostingData first, PostingData second)
 		}
 	}
 }
+void orintersecting(PostingData first, PostingData second)
+{
+	intersecting_result.term = "";
+	for (int i = 0; i < intersecting_result.cnt; i++)
+	{
+		intersecting_result.list[i] = 0;
+	}
+	intersecting_result.cnt = 0;
+	int result_cnt = 0, checkpos = 0, temp_cnt = 0;
+	for (int i = 0; i < first.cnt + second.cnt; i++)
+	{
+		if (i < first.cnt){
+			intersecting_result.list[result_cnt] = first.list[i];
+			intersecting_result.cnt++;
+			result_cnt++;
+		}
+		else{
+			int samecheck = 0;
+			for (int j = 0; j < first.cnt; j++){
+				if (first.list[j] == second.list[temp_cnt]){
+					samecheck = 1;
+				}				
+			}
+			if (samecheck != 1){
+				intersecting_result.list[result_cnt] = second.list[temp_cnt];
+				intersecting_result.cnt++;
+				result_cnt++;
+			}
+			temp_cnt++;
+		}
+	}
+	for (int i = 0; i < intersecting_result.cnt; i++){
+		for (int j = 1; j < intersecting_result.cnt - i; j++){
+			if (intersecting_result.list[j - 1] > intersecting_result.list[j]){
+				int temp = intersecting_result.list[j];
+				intersecting_result.list[j] = intersecting_result.list[j - 1];
+				intersecting_result.list[j - 1] = temp;
+			}
+		}
+	}
 
+}
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
 
 class CAboutDlg : public CDialogEx
@@ -522,8 +563,8 @@ void CinvertedindexDlg::OnBnClickedButton6()
 	GetDlgItemText(IDC_EDIT2, query);
 
 	CString resToken;
-	CString token[100] = { 0, };
-	int curPos = 0, token_cnt = 0, break_itr = 0;
+	CString token[100] = { 0, }, ortoken[100] = { 0, };
+	int curPos = 0, token_cnt = 0, ortoken_cnt = 0;
 	query.Replace(_T(":"), _T(""));
 	query.Replace(_T(";"), _T(""));
 	query.Replace(_T("."), _T(""));
@@ -556,28 +597,105 @@ void CinvertedindexDlg::OnBnClickedButton6()
 	query.Replace(_T(" "), _T(""));
 	query.Replace(_T("AND"), _T("&"));
 	query.Replace(_T("OR"), _T("|"));
-	query += _T("&");
-	resToken = query.Tokenize(_T("&"), curPos);
-	token[token_cnt] = resToken;
-	token_cnt++;
 
-	while (resToken != "")
-	{				
-		/*if (resToken.Find(_T("|")))
+	if (query.Find(_T("|")) != -1)
+	{
+		int orPos = 0;
+		resToken = query.Tokenize(_T("|"), orPos);
+		if (resToken.Find(_T("&")) != -1)
 		{
-			resToken = query.Tokenize(_T("|"), curPos);			
+			int tempPos = 0;
+			CString temp = resToken, temp1;
+			while (temp != "")
+			{
+				temp = resToken.Tokenize(_T("&"), tempPos);
+				if (temp == "")
+				{
+					ortoken[ortoken_cnt] = temp1;
+					ortoken_cnt++;
+					break;
+				}
+				temp1 = temp;
+			}
 		}
 		else
-		{*/
-		resToken = query.Tokenize(_T("&"), curPos);
-			if (resToken != ""){
-				token[token_cnt] = resToken;
-				token_cnt++;
+		{
+			ortoken[ortoken_cnt] = resToken;
+			ortoken_cnt++;
+		}
+		while (resToken != "")
+		{
+			resToken = query.Tokenize(_T("|"), orPos);
+			if (resToken == "")
+				break;
+			if (resToken.Find(_T("&")) != -1)
+			{
+				int tempPos = 0;
+				CString temp = resToken;
+				temp = resToken.Tokenize(_T("&"), tempPos);
+				ortoken[ortoken_cnt] = temp;
+				ortoken_cnt++;
 			}
-		//}
+			else{
+				ortoken[ortoken_cnt] = resToken;
+				ortoken_cnt++;
+			}
+		}
 	}
 
-	if (token_cnt > 1)
+	resToken = query.Tokenize(_T("&"), curPos);
+	if (resToken.Find(_T("|")) != -1)
+	{
+		int tempPos = 0;
+		CString temp = resToken, temp1;
+		while (temp != "")
+		{
+			temp = resToken.Tokenize(_T("|"), tempPos);
+			if (temp == "")
+			{
+				token[token_cnt] = temp1;
+				token_cnt++;
+				break;
+			}
+			temp1 = temp;
+		}
+	}
+	else
+	{
+		token[token_cnt] = resToken;
+		token_cnt++;
+	}
+	while (resToken != "")
+	{
+		resToken = query.Tokenize(_T("&"), curPos);
+		if (resToken == "")
+			break;
+		if (resToken.Find(_T("|")) != -1)
+		{
+			int tempPos = 0;
+			CString temp = resToken;
+			temp = resToken.Tokenize(_T("|"), tempPos);
+			token[token_cnt] = temp;
+			token_cnt++;
+		}
+		else{
+			token[token_cnt] = resToken;
+			token_cnt++;
+		}
+	}
+
+	for (int i = 0; i < token_cnt; i++)
+	{
+		for (int j = 0; j < ortoken_cnt; j++)
+		{
+			if (token[i] == ortoken[j])
+			{
+				token[i] = "";
+			}
+		}
+	}
+
+	if (token_cnt > 1 && ortoken_cnt==0)
 	{
 		int termcheck = 0;
 		list<PostingData> in_list;
@@ -700,7 +818,7 @@ void CinvertedindexDlg::OnBnClickedButton6()
 			SetDlgItemText(IDC_EDIT1, outlist);
 		}
 	}
-	else if (token_cnt == 1)
+	else if (token_cnt == 1 && ortoken_cnt==0)
 	{
 		int termcheck = 0;
 		for (pi_list = p_list.begin(); pi_list != p_list.end(); pi_list++)
@@ -753,7 +871,308 @@ void CinvertedindexDlg::OnBnClickedButton6()
 			SetDlgItemText(IDC_EDIT1, _T(""));
 		}
 	}
+	else if (ortoken_cnt >= 2 && token_cnt == 1)
+	{
+		int termcheck = 0;
+		list<PostingData> in_list;
+		list<PostingData>::iterator ini_list;
+		for (pi_list = p_list.begin(); pi_list != p_list.end(); pi_list++)
+		{
+			for (int i = 0; i < ortoken_cnt; i++)
+			{
+				if (pi_list->term == ortoken[i])
+				{
+					PostingData obj;
+					termcheck++;
+					obj.term = pi_list->term;
+					obj.cnt = pi_list->cnt;
+					for (int j = 0; j < obj.cnt; j++)
+					{
+						obj.list[j] = pi_list->list[j];
+					}
+					in_list.push_back(obj);
+				}
+			}
+		}
+		if (termcheck != ortoken_cnt)
+		{
+			MessageBox(_T("검색 결과가 없습니다."));
+			SetDlgItemText(IDC_EDIT1, _T(""));
+		}
+		in_list.sort(Posting_compare);
 
+		int ini_check = 0;
+		for (ini_list = in_list.begin(); ini_list != in_list.end(); ini_list++)
+		{
+			if (ini_check == in_list.size())
+				break;
+
+			if (ini_list == in_list.begin())
+			{
+				PostingData obj, obj1;
+				obj.term = ini_list->term;
+				obj.cnt = ini_list->cnt;
+				for (int i = 0; i < obj.cnt; i++)
+				{
+					obj.list[i] = ini_list->list[i];
+				}
+				ini_list++;
+				ini_check++;
+				obj1.term = ini_list->term;
+				obj1.cnt = ini_list->cnt;
+				for (int i = 0; i < obj1.cnt; i++)
+				{
+					obj1.list[i] = ini_list->list[i];
+				}
+				orintersecting(obj, obj1);
+			}
+			else
+			{
+				PostingData obj;
+				obj.term = ini_list->term;
+				obj.cnt = ini_list->cnt;
+				for (int i = 0; i < obj.cnt; i++)
+				{
+					obj.list[i] = ini_list->list[i];
+				}
+
+				if (intersecting_result.cnt >= obj.cnt)
+				{
+					orintersecting(intersecting_result, obj);
+				}
+				else if (intersecting_result.cnt < obj.cnt)
+				{
+					orintersecting(obj, intersecting_result);
+				}
+			}
+			ini_check++;
+		}
+
+		if (intersecting_result.cnt == 0)
+		{
+			MessageBox(_T("검색 결과가 없습니다."));
+			SetDlgItemText(IDC_EDIT1, _T(""));
+		}
+		else if (intersecting_result.cnt != 0)
+		{
+			CString outlist, index;
+			outlist += _T("Intersection:\r\n");
+			for (int i = 0; i < intersecting_result.cnt; i++)
+			{
+				if (intersecting_result.list[i] != 0){
+					index.Format(_T("%d"), intersecting_result.list[i]);
+					outlist += index;
+					if (i != intersecting_result.cnt - 1)
+						outlist += _T(" -> ");
+				}
+			}
+			outlist += _T("\r\n\r\nSearch Result :\r\n");
+			CStdioFile File;
+			for (int i = 0; i < intersecting_result.cnt; i++)
+			{
+				if (intersecting_result.list[i] != 0){
+					CString str, display_str;
+					CString filename, fileindex;
+					fileindex.Format(_T("%d"), intersecting_result.list[i]);
+					filename += fileindex;
+					filename += _T(".txt");
+					display_str += filename;
+					display_str += _T("\r\n");
+					if (!File.Open(filename, CFile::modeRead))
+					{
+						MessageBox(_T("파일을 열지 못했습니다."));
+					}
+					else
+					{
+						while (File.ReadString(str))
+						{
+							display_str += str;
+							display_str += _T("\r\n");
+						}
+						File.Close();
+					}
+					outlist += display_str;
+				}
+				SetDlgItemText(IDC_EDIT1, _T(""));
+				SetDlgItemText(IDC_EDIT1, outlist);
+			}
+		}
+	}
+	else if (token_cnt >= 2 && ortoken_cnt >= 2)
+	{
+		if (ortoken_cnt != 0)
+		{
+			int termcheck = 0;
+			list<PostingData> in_list;
+			list<PostingData>::iterator ini_list;
+			for (pi_list = p_list.begin(); pi_list != p_list.end(); pi_list++)
+			{
+				for (int i = 0; i < ortoken_cnt; i++)
+				{
+					if (pi_list->term == ortoken[i])
+					{
+						PostingData obj;
+						termcheck++;
+						obj.term = pi_list->term;
+						obj.cnt = pi_list->cnt;
+						for (int j = 0; j < obj.cnt; j++)
+						{
+							obj.list[j] = pi_list->list[j];
+						}
+						in_list.push_back(obj);
+					}
+				}
+			}
+			in_list.sort(Posting_compare);
+
+			int ini_check = 0;
+			for (ini_list = in_list.begin(); ini_list != in_list.end(); ini_list++)
+			{
+				if (ini_check == in_list.size())
+					break;
+
+				if (ini_list == in_list.begin())
+				{
+					PostingData obj, obj1;
+					obj.term = ini_list->term;
+					obj.cnt = ini_list->cnt;
+					for (int i = 0; i < obj.cnt; i++)
+					{
+						obj.list[i] = ini_list->list[i];
+					}
+					ini_list++;
+					ini_check++;
+					obj1.term = ini_list->term;
+					obj1.cnt = ini_list->cnt;
+					for (int i = 0; i < obj1.cnt; i++)
+					{
+						obj1.list[i] = ini_list->list[i];
+					}
+					orintersecting(obj, obj1);
+				}
+				else
+				{
+					PostingData obj;
+					obj.term = ini_list->term;
+					obj.cnt = ini_list->cnt;
+					for (int i = 0; i < obj.cnt; i++)
+					{
+						obj.list[i] = ini_list->list[i];
+					}
+
+					if (intersecting_result.cnt >= obj.cnt)
+					{
+						orintersecting(intersecting_result, obj);
+					}
+					else if (intersecting_result.cnt < obj.cnt)
+					{
+						orintersecting(obj, intersecting_result);
+					}
+				}
+				ini_check++;
+			}			
+		}
+		if (token_cnt != 0)
+		{
+			int termcheck = 0;
+			list<PostingData> in_list;
+			list<PostingData>::iterator ini_list;
+			for (pi_list = p_list.begin(); pi_list != p_list.end(); pi_list++)
+			{
+				for (int i = 0; i < token_cnt; i++)
+				{
+					if (pi_list->term == token[i])
+					{
+						PostingData obj;
+						termcheck++;
+						obj.term = pi_list->term;
+						obj.cnt = pi_list->cnt;
+						for (int j = 0; j < obj.cnt; j++)
+						{
+							obj.list[j] = pi_list->list[j];
+						}
+						in_list.push_back(obj);
+					}
+				}
+			}
+			in_list.sort(Posting_compare);
+
+			int ini_check = 0;
+			for (ini_list = in_list.begin(); ini_list != in_list.end(); ini_list++)
+			{
+				if (ini_check == in_list.size())
+					break;
+
+				PostingData obj;
+				obj.term = ini_list->term;
+				obj.cnt = ini_list->cnt;
+				for (int i = 0; i < obj.cnt; i++)
+				{
+					obj.list[i] = ini_list->list[i];
+				}
+
+				if (intersecting_result.cnt >= obj.cnt)
+				{
+					intersecting(intersecting_result, obj);
+				}
+				else if (intersecting_result.cnt < obj.cnt)
+				{
+					intersecting(obj, intersecting_result);
+				}
+				ini_check++;
+			}
+
+			if (intersecting_result.cnt == 0)
+			{
+				MessageBox(_T("검색 결과가 없습니다."));
+				SetDlgItemText(IDC_EDIT1, _T(""));
+			}
+			else if (intersecting_result.cnt != 0)
+			{
+				CString outlist, index;
+				outlist += _T("Intersection:\r\n");
+				for (int i = 0; i < intersecting_result.cnt; i++)
+				{
+					if (intersecting_result.list[i] != 0){
+						index.Format(_T("%d"), intersecting_result.list[i]);
+						outlist += index;
+						if (i != intersecting_result.cnt - 1)
+							outlist += _T(" -> ");
+					}
+				}
+				outlist += _T("\r\n\r\nSearch Result :\r\n");
+				CStdioFile File;
+				for (int i = 0; i < intersecting_result.cnt; i++)
+				{
+					if (intersecting_result.list[i] != 0){
+						CString str, display_str;
+						CString filename, fileindex;
+						fileindex.Format(_T("%d"), intersecting_result.list[i]);
+						filename += fileindex;
+						filename += _T(".txt");
+						display_str += filename;
+						display_str += _T("\r\n");
+						if (!File.Open(filename, CFile::modeRead))
+						{
+							MessageBox(_T("파일을 열지 못했습니다."));
+						}
+						else
+						{
+							while (File.ReadString(str))
+							{
+								display_str += str;
+								display_str += _T("\r\n");
+							}
+							File.Close();
+						}
+						outlist += display_str;
+					}
+					SetDlgItemText(IDC_EDIT1, _T(""));
+					SetDlgItemText(IDC_EDIT1, outlist);
+				}
+			}
+		}
+	}
 }
 
 BOOL CinvertedindexDlg::PreTranslateMessage(MSG* pMsg)
